@@ -16,8 +16,8 @@ int menu() {
     printf("\n== GESTSYS UDLA ==\n");
     printf("1. Inventario Inicial\n");
     printf("2. Realizar Ventas\n");
-    printf("3. Gestión Inventario\n");
-    printf("4. Estadística de Ventas\n");
+    printf("3. Gestion Inventario\n");
+    printf("4. Estadistica de Ventas\n");
     printf("5. Listado de Clientes\n");
     printf("6. Buscar Ventas\n");
     printf("7. Salir\n");
@@ -28,75 +28,128 @@ int menu() {
 }
 
 void inicializarInventario() {
-    FILE *f = fopen("inventario.dat", "rb+");
     struct Repuesto inventario[5];
     int cantidadActual = 0;
 
+    // Inicializar array con ceros primero
+    for (int i = 0; i < 5; i++) {
+        inventario[i].id = 0;
+        inventario[i].cantidad = 0;
+        inventario[i].precio = 0.0;
+        strcpy(inventario[i].nombre, "");
+    }
+
+    // Verificar si ya existe inventario
+    FILE *f = fopen("inventario.dat", "rb");
     if (f != NULL) {
         fread(inventario, sizeof(struct Repuesto), 5, f);
         fclose(f);
+        
+        // Contar elementos existentes
         for (int i = 0; i < 5; i++) {
-            if (inventario[i].id != 0)
+            if (inventario[i].id != 0 && inventario[i].id > 0)
                 cantidadActual++;
         }
+        
         if (cantidadActual >= 5) {
-            printf("El inventario ya fue inicializado. Para agregar más use la opción 3.\n");
+            printf("El inventario ya fue inicializado completamente. Para modificar use la opción 3.\n");
             return;
         }
     }
 
-    f = fopen("inventario.dat", "rb+");
-    if (f == NULL) f = fopen("inventario.dat", "wb+");
-
-    if (cantidadActual > 0)
-        fread(inventario, sizeof(struct Repuesto), 5, f);
-
     int num;
-    printf("Ingrese cuántos repuestos desea agregar (máx %d): ", 5 - cantidadActual);
+    int espaciosDisponibles = 5 - cantidadActual;
+    printf("Ingrese cuantos repuestos desea agregar (max %d): ", espaciosDisponibles);
     scanf("%d", &num);
+    
+    if (num > espaciosDisponibles) {
+        num = espaciosDisponibles;
+        printf("Se limitará a %d repuestos por espacio disponible.\n", num);
+    }
+    
     getchar();
 
-    for (int i = cantidadActual; i < cantidadActual + num; i++) {
-        printf("ID del repuesto: ");
-        scanf("%d", &inventario[i].id);
-        getchar();
-        printf("Nombre del repuesto: ");
-        leerCadena(inventario[i].nombre, 30);
-        printf("Cantidad inicial: ");
-        scanf("%d", &inventario[i].cantidad);
-        printf("Precio: ");
-        scanf("%f", &inventario[i].precio);
-        getchar();
+    // Buscar los primeros espacios vacíos para agregar nuevos repuestos
+    int agregados = 0;
+    for (int i = 0; i < 5 && agregados < num; i++) {
+        if (inventario[i].id == 0 || inventario[i].id <= 0) {
+            printf("\n--- Repuesto %d ---\n", agregados + 1);
+            printf("ID del repuesto: ");
+            scanf("%d", &inventario[i].id);
+            getchar();
+            printf("Nombre del repuesto: ");
+            leerCadena(inventario[i].nombre, 30);
+            printf("Cantidad inicial: ");
+            scanf("%d", &inventario[i].cantidad);
+            printf("Precio: ");
+            scanf("%f", &inventario[i].precio);
+            getchar();
+            agregados++;
+        }
     }
 
+    // Guardar todo el inventario
     f = fopen("inventario.dat", "wb");
     fwrite(inventario, sizeof(struct Repuesto), 5, f);
     fclose(f);
 
-    printf("Inventario inicializado correctamente.\n");
+    printf("Inventario actualizado correctamente. Se agregaron %d repuestos.\n", agregados);
 }
 
 void mostrarInventario() {
     FILE *f = fopen("inventario.dat", "rb");
     if (f == NULL) {
-        printf("Inventario no disponible.\n");
+        printf("Inventario no disponible. Debe inicializar primero.\n");
         return;
     }
 
     struct Repuesto repuestos[5];
+    
+    // Inicializar array
+    for (int i = 0; i < 5; i++) {
+        repuestos[i].id = 0;
+        repuestos[i].cantidad = 0;
+        repuestos[i].precio = 0.0;
+        strcpy(repuestos[i].nombre, "");
+    }
+    
     fread(repuestos, sizeof(struct Repuesto), 5, f);
     fclose(f);
 
-    printf("#\tID\tRepuesto\t\tCantidad\n");
+    printf("\n=== INVENTARIO ===\n");
+    printf("#\tID\tRepuesto\t\tCantidad\tPrecio\n");
+    printf("---------------------------------------------------------------\n");
+    
+    int contador = 0;
     for (int i = 0; i < 5; i++) {
-        if (repuestos[i].id != 0)
-            printf("%d\t%d\t%-20s%d\n", i + 1, repuestos[i].id, repuestos[i].nombre, repuestos[i].cantidad);
+        if (repuestos[i].id > 0) {
+            contador++;
+            printf("%d\t%d\t%-20s%d\t\t%.2f\n", 
+                   contador, 
+                   repuestos[i].id, 
+                   repuestos[i].nombre, 
+                   repuestos[i].cantidad,
+                   repuestos[i].precio);
+        }
+    }
+    
+    if (contador == 0) {
+        printf("No hay repuestos en el inventario.\n");
     }
 }
 
 void realizarVenta() {
     struct Repuesto inventario[5];
-    FILE *finv = fopen("inventario.dat", "rb+");
+    
+    // Inicializar array
+    for (int i = 0; i < 5; i++) {
+        inventario[i].id = 0;
+        inventario[i].cantidad = 0;
+        inventario[i].precio = 0.0;
+        strcpy(inventario[i].nombre, "");
+    }
+    
+    FILE *finv = fopen("inventario.dat", "rb");
     if (finv == NULL) {
         printf("No hay inventario inicializado.\n");
         return;
@@ -107,12 +160,12 @@ void realizarVenta() {
     struct Venta nuevaVenta;
     printf("Nombre del cliente: ");
     leerCadena(nuevaVenta.cliente.nombre, 30);
-    printf("Cédula del cliente: ");
+    printf("Cedula del cliente: ");
     scanf("%d", &nuevaVenta.cliente.cedula);
     getchar();
 
     mostrarInventario();
-    printf("¿Cuántos productos desea comprar? ");
+    printf("Cuantos productos desea comprar ");
     scanf("%d", &nuevaVenta.numRepuestos);
     getchar();
 
@@ -197,7 +250,16 @@ int clienteRegistrado(int cedula) {
 
 void reabastecerInventario() {
     struct Repuesto repuestos[5];
-    FILE *f = fopen("inventario.dat", "rb+");
+    
+    // Inicializar array
+    for (int i = 0; i < 5; i++) {
+        repuestos[i].id = 0;
+        repuestos[i].cantidad = 0;
+        repuestos[i].precio = 0.0;
+        strcpy(repuestos[i].nombre, "");
+    }
+    
+    FILE *f = fopen("inventario.dat", "rb");
     if (f == NULL) {
         printf("No hay inventario disponible.\n");
         return;
@@ -214,20 +276,36 @@ void reabastecerInventario() {
 
     if (opc == 0) {
         for (int i = 0; i < 5; i++) {
-            int add;
-            printf("Cantidad para %s: ", repuestos[i].nombre);
-            scanf("%d", &add);
-            repuestos[i].cantidad += add;
+            if (repuestos[i].id != 0) {
+                int add;
+                printf("Cantidad para %s: ", repuestos[i].nombre);
+                scanf("%d", &add);
+                repuestos[i].cantidad += add;
+            }
         }
     } else {
-        if (opc < 1 || opc > 5) {
+        // Encontrar el repuesto por su posición visual
+        int contador = 0;
+        int indiceReal = -1;
+        for (int i = 0; i < 5; i++) {
+            if (repuestos[i].id != 0) {
+                contador++;
+                if (contador == opc) {
+                    indiceReal = i;
+                    break;
+                }
+            }
+        }
+        
+        if (indiceReal == -1) {
             printf("Selección inválida.\n");
             return;
         }
+        
         int add;
-        printf("Cantidad para %s: ", repuestos[opc - 1].nombre);
+        printf("Cantidad para %s: ", repuestos[indiceReal].nombre);
         scanf("%d", &add);
-        repuestos[opc - 1].cantidad += add;
+        repuestos[indiceReal].cantidad += add;
     }
 
     f = fopen("inventario.dat", "wb");
@@ -362,4 +440,31 @@ void buscarVentas() {
     }
 
     fclose(f);
+}
+
+void mostrarClientes() {
+    FILE *f = fopen("clientes.dat", "rb");
+    if (f == NULL) {
+        printf("No hay clientes registrados.\n");
+        return;
+    }
+
+    struct Cliente cliente;
+    int contador = 0;
+    
+    printf("\n=== LISTADO DE CLIENTES ===\n");
+    printf("#\tCédula\t\tNombre\n");
+    printf("-----------------------------------\n");
+    
+    while (fread(&cliente, sizeof(struct Cliente), 1, f)) {
+        printf("%d\t%d\t\t%s\n", ++contador, cliente.cedula, cliente.nombre);
+    }
+    
+    fclose(f);
+    
+    if (contador == 0) {
+        printf("No hay clientes registrados.\n");
+    } else {
+        printf("\nTotal de clientes: %d\n", contador);
+    }
 }

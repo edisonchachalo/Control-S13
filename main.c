@@ -40,7 +40,7 @@ int main() {
                 printf("Saliendo del sistema...\n");
                 break;
             default:
-                printf("Opción no válida.\n");
+                printf("Opcion no valida.\n");
         }
     } while (opc != 7);
     return 0;
