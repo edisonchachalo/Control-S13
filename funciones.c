@@ -242,7 +242,7 @@ void realizarVenta() {
         }
 
         if (encontrado == -1) {
-            printf("No se encontró el repuesto con ID %s.\n", id);
+            printf("No se encontro el repuesto con ID %s.\n", id);
             i--;
             continue;
         }
