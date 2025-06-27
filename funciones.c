@@ -33,7 +33,7 @@ void inicializarInventario() {
 
     // Inicializar array con ceros primero
     for (int i = 0; i < 5; i++) {
-        inventario[i].id = 0;
+        strcpy(inventario[i].id, "");  // Inicializa ID como cadena vacía
         inventario[i].cantidad = 0;
         inventario[i].precio = 0.0;
         strcpy(inventario[i].nombre, "");
@@ -47,7 +47,7 @@ void inicializarInventario() {
         
         // Contar elementos existentes
         for (int i = 0; i < 5; i++) {
-            if (inventario[i].id != 0 && inventario[i].id > 0)
+            if (strlen(inventario[i].id) > 0)  // Verifica si hay un ID no vacío
                 cantidadActual++;
         }
         
@@ -72,11 +72,10 @@ void inicializarInventario() {
     // Buscar los primeros espacios vacíos para agregar nuevos repuestos
     int agregados = 0;
     for (int i = 0; i < 5 && agregados < num; i++) {
-        if (inventario[i].id == 0 || inventario[i].id <= 0) {
+        if (strlen(inventario[i].id) == 0) {  // Si el ID está vacío
             printf("\n--- Repuesto %d ---\n", agregados + 1);
             printf("ID del repuesto: ");
-            scanf("%d", &inventario[i].id);
-            getchar();
+            leerCadena(inventario[i].id, 10);  // Usa leerCadena en vez de scanf
             printf("Nombre del repuesto: ");
             leerCadena(inventario[i].nombre, 30);
             printf("Cantidad inicial: ");
@@ -107,14 +106,19 @@ void mostrarInventario() {
     
     // Inicializar array
     for (int i = 0; i < 5; i++) {
-        repuestos[i].id = 0;
+        strcpy(repuestos[i].id, "");  // ID como cadena vacía
         repuestos[i].cantidad = 0;
         repuestos[i].precio = 0.0;
         strcpy(repuestos[i].nombre, "");
     }
     
-    fread(repuestos, sizeof(struct Repuesto), 5, f);
+    int leidos = fread(repuestos, sizeof(struct Repuesto), 5, f);
     fclose(f);
+    
+    if (leidos == 0) {
+        printf("Archivo de inventario vacío o corrupto.\n");
+        return;
+    }
 
     printf("\n=== INVENTARIO ===\n");
     printf("#\tID\tRepuesto\t\tCantidad\tPrecio\n");
@@ -122,9 +126,10 @@ void mostrarInventario() {
     
     int contador = 0;
     for (int i = 0; i < 5; i++) {
-        if (repuestos[i].id > 0) {
+        // Mostrar solo si el ID no está vacío
+        if (strlen(repuestos[i].id) > 0) {
             contador++;
-            printf("%d\t%d\t%-20s%d\t\t%.2f\n", 
+            printf("%d\t%s\t%-20s%d\t\t%.2f\n", 
                    contador, 
                    repuestos[i].id, 
                    repuestos[i].nombre, 
@@ -143,7 +148,7 @@ void realizarVenta() {
     
     // Inicializar array
     for (int i = 0; i < 5; i++) {
-        inventario[i].id = 0;
+        strcpy(inventario[i].id, "");  // ID como cadena vacía
         inventario[i].cantidad = 0;
         inventario[i].precio = 0.0;
         strcpy(inventario[i].nombre, "");
@@ -154,47 +159,104 @@ void realizarVenta() {
         printf("No hay inventario inicializado.\n");
         return;
     }
-    fread(inventario, sizeof(struct Repuesto), 5, finv);
+    
+    int leidos = fread(inventario, sizeof(struct Repuesto), 5, finv);
     fclose(finv);
+    
+    if (leidos == 0) {
+        printf("Error al leer el inventario.\n");
+        return;
+    }
+    
+    // Verificar si hay productos en el inventario
+    int hayProductos = 0;
+    for (int i = 0; i < 5; i++) {
+        if (strlen(inventario[i].id) > 0) {  // Si hay ID
+            hayProductos = 1;
+            break;
+        }
+    }
+    
+    if (!hayProductos) {
+        printf("No hay productos disponibles en el inventario.\n");
+        return;
+    }
 
     struct Venta nuevaVenta;
     printf("Nombre del cliente: ");
     leerCadena(nuevaVenta.cliente.nombre, 30);
     printf("Cedula del cliente: ");
     scanf("%d", &nuevaVenta.cliente.cedula);
-    getchar();
+    getchar(); // Limpiar buffer
 
+    // Mostrar inventario para que el cliente pueda ver lo que hay
     mostrarInventario();
-    printf("Cuantos productos desea comprar ");
-    scanf("%d", &nuevaVenta.numRepuestos);
-    getchar();
+    
+    int validoNumRepuestos = 0;
+    do {
+        printf("Cuantos productos desea comprar: ");
+        if (scanf("%d", &nuevaVenta.numRepuestos) != 1) {
+            printf("Entrada inválida. Ingrese un número.\n");
+            while(getchar() != '\n'); // Limpiar buffer
+        } else if (nuevaVenta.numRepuestos <= 0) {
+            printf("Cantidad debe ser mayor a cero.\n");
+        } else {
+            validoNumRepuestos = 1;
+        }
+    } while (!validoNumRepuestos);
+    
+    getchar(); // Limpiar buffer
 
     nuevaVenta.totalVenta = 0;
     for (int i = 0; i < nuevaVenta.numRepuestos; i++) {
-        int id, cantidad;
+        char id[10];
+        int cantidad = 0;
         int encontrado = -1;
+        
+        // Obtener ID del repuesto
         printf("ID del repuesto #%d: ", i + 1);
-        scanf("%d", &id);
-        printf("Cantidad: ");
-        scanf("%d", &cantidad);
-        getchar();
+        leerCadena(id, 10);  // Usa leerCadena para ID alfanumérico
+        
+        // Obtener cantidad con validación
+        int entradaValida = 0;
+        do {
+            printf("Cantidad: ");
+            if (scanf("%d", &cantidad) != 1) {
+                printf("Entrada inválida. Ingrese una cantidad numérica.\n");
+                while(getchar() != '\n'); // Limpiar buffer
+            } else if (cantidad <= 0) {
+                printf("La cantidad debe ser mayor a cero.\n");
+            } else {
+                entradaValida = 1;
+            }
+        } while (!entradaValida);
+        
+        getchar(); // Limpiar buffer
 
+        // Buscar el repuesto en el inventario por ID (ahora como string)
         for (int j = 0; j < 5; j++) {
-            if (inventario[j].id == id) {
+            if (strcmp(inventario[j].id, id) == 0) {
                 encontrado = j;
                 break;
             }
         }
 
-        if (encontrado == -1 || inventario[encontrado].cantidad < cantidad) {
-            printf("No se puede vender el repuesto con ID %d. Inventario insuficiente.\n", id);
+        if (encontrado == -1) {
+            printf("No se encontró el repuesto con ID %s.\n", id);
+            i--;
+            continue;
+        }
+        
+        if (inventario[encontrado].cantidad < cantidad) {
+            printf("No hay suficiente inventario. Disponible: %d unidades de %s.\n", 
+                   inventario[encontrado].cantidad, inventario[encontrado].nombre);
             i--;
             continue;
         }
 
         inventario[encontrado].cantidad -= cantidad;
 
-        nuevaVenta.repuestos[i].idRepuesto = inventario[encontrado].id;
+        strcpy(nuevaVenta.repuestos[i].idRepuesto, inventario[encontrado].id);
         strcpy(nuevaVenta.repuestos[i].nombre, inventario[encontrado].nombre);
         nuevaVenta.repuestos[i].cantidad = cantidad;
         nuevaVenta.repuestos[i].precioUnitario = inventario[encontrado].precio;
@@ -253,7 +315,7 @@ void reabastecerInventario() {
     
     // Inicializar array
     for (int i = 0; i < 5; i++) {
-        repuestos[i].id = 0;
+        repuestos[i].id[0] = '\0';  // ID como cadena vacía
         repuestos[i].cantidad = 0;
         repuestos[i].precio = 0.0;
         strcpy(repuestos[i].nombre, "");
@@ -276,7 +338,7 @@ void reabastecerInventario() {
 
     if (opc == 0) {
         for (int i = 0; i < 5; i++) {
-            if (repuestos[i].id != 0) {
+            if (repuestos[i].id[0] != '\0') {
                 int add;
                 printf("Cantidad para %s: ", repuestos[i].nombre);
                 scanf("%d", &add);
@@ -288,7 +350,7 @@ void reabastecerInventario() {
         int contador = 0;
         int indiceReal = -1;
         for (int i = 0; i < 5; i++) {
-            if (repuestos[i].id != 0) {
+            if (repuestos[i].id[0] != '\0') {
                 contador++;
                 if (contador == opc) {
                     indiceReal = i;
@@ -385,17 +447,17 @@ void buscarVentas() {
     struct Venta v;
 
     if (opc == 1) {
-        int id;
+        char id[10];
         printf("Ingrese el ID del producto: ");
-        scanf("%d", &id);
-        getchar();
+        leerCadena(id, 10);  // Usa leerCadena para ID alfanumérico
+        
         int totalCant = 0;
         float totalPrecio = 0;
         char nombreProducto[30] = "";
 
         while (fread(&v, sizeof(struct Venta), 1, f)) {
             for (int i = 0; i < v.numRepuestos; i++) {
-                if (v.repuestos[i].idRepuesto == id) {
+                if (strcmp(v.repuestos[i].idRepuesto, id) == 0) {  // Compara strings
                     if (strlen(nombreProducto) == 0)
                         strcpy(nombreProducto, v.repuestos[i].nombre);
                     totalCant += v.repuestos[i].cantidad;
